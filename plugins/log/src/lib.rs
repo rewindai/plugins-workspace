@@ -262,9 +262,7 @@ fn log(
     if !key_values.is_empty() {
         let kv_clean = serde_json::to_string_pretty(&kv)
             .unwrap()
-            .replace("\\", "")
-            .replace('\n', "")
-            .replace('\t', "");
+            .replace(["\\", '\n', '\t'], "");
         logger().log(
             &builder
                 .args(format_args!("{message} (Key Values: {})", kv_clean))
