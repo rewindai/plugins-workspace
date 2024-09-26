@@ -254,7 +254,21 @@ fn log(
     }
     builder.key_values(&kv);
 
-    logger().log(&builder.args(format_args!("{message}")).build());
+    // TODO: DRY this up. I tried. Rust is hard. Even for Claude.
+    if !key_values.is_empty() {
+        let kv_clean = serde_json::to_string_pretty(&kv)
+            .unwrap()
+            .replace("\\", "")
+            .replace('\n', "")
+            .replace('\t', "");
+        logger().log(
+            &builder
+                .args(format_args!("{message} (Key Values: {})", kv_clean))
+                .build(),
+        );
+    } else {
+        logger().log(&builder.args(format_args!("{message}")).build());
+    }
 }
 
 pub struct Builder {
@@ -263,6 +277,22 @@ pub struct Builder {
     timezone_strategy: TimezoneStrategy,
     max_file_size: u128,
     targets: Vec<Target>,
+}
+
+fn clean_target(target: &str) -> String {
+    // Cleans noise from the target to make it more readable; replaces
+    // /node_modules/.vite/deps and any URL host/port prefix.
+    // It also cleans the line/column number from @tauri-apps_plugin-log.js.
+    let target = regex::Regex::new(r"/node_modules/\.vite/deps")
+        .unwrap()
+        .replace_all(target, "/...");
+    let target = regex::Regex::new(r"https?://[^/]+/")
+        .unwrap()
+        .replace_all(&target, "...");
+    let target = regex::Regex::new(r"@tauri-apps_plugin-log\.js:\d+:\d+")
+        .unwrap()
+        .replace_all(&target, "@tauri-apps_plugin-log.js");
+    target.into_owned()
 }
 
 impl Default for Builder {
@@ -279,7 +309,7 @@ impl Default for Builder {
                 format_args!(
                     "{}[{}][{}] {}",
                     DEFAULT_TIMEZONE_STRATEGY.get_now().format(&format).unwrap(),
-                    record.target(),
+                    clean_target(record.target()),
                     record.level(),
                     message
                 ),
