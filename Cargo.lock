@@ -6597,6 +6597,7 @@ dependencies = [
  "fern",
  "log",
  "objc",
+ "regex",
  "serde",
  "serde_json",
  "serde_repr",
